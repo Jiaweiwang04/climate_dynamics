@@ -221,7 +221,7 @@ __marimo__/
 data/raw/*
 data/interim/*
 data/processed/*
-figures/*
+
 !data/raw/.gitkeep
 !data/interim/.gitkeep
 !data/processed/.gitkeep
