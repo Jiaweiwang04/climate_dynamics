@@ -77,7 +77,8 @@ def identify_temperature_variable(
         if variable_name not in ds.data_vars:
             available = ", ".join(ds.data_vars)
             raise KeyError(
-                f"Variable {variable_name!r} was not found. Available variables: {available}"
+                f"Variable {variable_name!r} was not found. "
+                f"Available variables: {available}"
             )
         return variable_name
 
@@ -90,7 +91,7 @@ def identify_temperature_variable(
         score = sum(word in text for word in candidate_words)
 
         dims = {dim.lower() for dim in da.dims}
-        has_time = any("time" in dim for dim in dims)
+        has_time = any(dim == "t" or "time" in dim for dim in dims)
         has_lat = any(dim in {"lat", "latitude"} or "lat" in dim for dim in dims)
         has_lon = any(dim in {"lon", "longitude"} or "lon" in dim for dim in dims)
         if has_time and has_lat and has_lon:
@@ -122,7 +123,10 @@ def inspect_dataset(ds: xr.Dataset) -> str:
         *[f"  {name}: {size}" for name, size in ds.sizes.items()],
         "",
         "Coordinates:",
-        *[f"  {name}: dims={coord.dims}, shape={coord.shape}" for name, coord in ds.coords.items()],
+        *[
+            f"  {name}: dims={coord.dims}, shape={coord.shape}"
+            for name, coord in ds.coords.items()
+        ],
         "",
         "Data variables:",
     ]
@@ -143,4 +147,3 @@ def inspect_dataset(ds: xr.Dataset) -> str:
     summary = "\n".join(lines)
     print(summary)
     return summary
-

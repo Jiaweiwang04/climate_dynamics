@@ -11,7 +11,10 @@ from src.config import DETREND, END_YEAR, MAX_MISSING_FRACTION, START_YEAR
 from src.data_loader import identify_temperature_variable
 
 
-def _find_dim_name(names: list[str] | tuple[str, ...], candidates: tuple[str, ...]) -> str:
+def _find_dim_name(
+    names: list[str] | tuple[str, ...],
+    candidates: tuple[str, ...],
+) -> str:
     lower_map = {name.lower(): name for name in names}
     for candidate in candidates:
         if candidate in lower_map:

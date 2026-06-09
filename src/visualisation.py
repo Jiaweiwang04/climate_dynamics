@@ -27,7 +27,10 @@ def plot_global_mean_timeseries(
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot the spatial mean anomaly through time."""
 
-    da = ds_or_da[identify_temperature_variable(ds_or_da)] if isinstance(ds_or_da, xr.Dataset) else ds_or_da
+    if isinstance(ds_or_da, xr.Dataset):
+        da = ds_or_da[identify_temperature_variable(ds_or_da)]
+    else:
+        da = ds_or_da
     time_dim = find_time_dim(da)
     spatial_dims = [dim for dim in da.dims if dim != time_dim]
     series = da.mean(dim=spatial_dims, skipna=True)
@@ -48,7 +51,10 @@ def plot_missing_data_map(
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot retained grid points coloured by missing-data fraction when available."""
 
-    color = lat_lon["missing_fraction"] if "missing_fraction" in lat_lon else np.zeros(len(lat_lon))
+    if "missing_fraction" in lat_lon:
+        color = lat_lon["missing_fraction"]
+    else:
+        color = np.zeros(len(lat_lon))
     fig, ax = plt.subplots(figsize=(10, 5))
     scatter = ax.scatter(lat_lon["lon"], lat_lon["lat"], c=color, s=12, cmap="viridis")
     ax.set_title("Retained grid points and missing-data fraction")
@@ -121,13 +127,39 @@ def plot_degree_histogram(
     return fig, ax
 
 
-def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Compute great-circle distance between two latitude-longitude points."""
+
     radius_km = 6371.0
     phi1, phi2 = np.radians([lat1, lat2])
     dphi = np.radians(lat2 - lat1)
     dlambda = np.radians(lon2 - lon1)
-    a = np.sin(dphi / 2) ** 2 + np.cos(phi1) * np.cos(phi2) * np.sin(dlambda / 2) ** 2
+    a = (
+        np.sin(dphi / 2) ** 2
+        + np.cos(phi1) * np.cos(phi2) * np.sin(dlambda / 2) ** 2
+    )
     return float(2 * radius_km * np.arcsin(np.sqrt(a)))
+
+
+def compute_link_lengths_km(G: nx.Graph) -> np.ndarray:
+    """Return great-circle edge lengths using node ``lat`` and ``lon`` attributes."""
+
+    lengths = []
+    for source, target in G.edges:
+        source_attrs = G.nodes[source]
+        target_attrs = G.nodes[target]
+        if {"lat", "lon"}.issubset(source_attrs) and {"lat", "lon"}.issubset(
+            target_attrs
+        ):
+            lengths.append(
+                haversine_km(
+                    source_attrs["lat"],
+                    source_attrs["lon"],
+                    target_attrs["lat"],
+                    target_attrs["lon"],
+                )
+            )
+    return np.asarray(lengths, dtype=float)
 
 
 def plot_link_length_distribution(
@@ -136,19 +168,7 @@ def plot_link_length_distribution(
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot great-circle lengths of graph edges using node lat/lon attributes."""
 
-    lengths = []
-    for source, target in G.edges:
-        source_attrs = G.nodes[source]
-        target_attrs = G.nodes[target]
-        if {"lat", "lon"}.issubset(source_attrs) and {"lat", "lon"}.issubset(target_attrs):
-            lengths.append(
-                _haversine_km(
-                    source_attrs["lat"],
-                    source_attrs["lon"],
-                    target_attrs["lat"],
-                    target_attrs["lon"],
-                )
-            )
+    lengths = compute_link_lengths_km(G)
 
     fig, ax = plt.subplots(figsize=(7, 4))
     ax.hist(lengths, bins=40, color="#59A14F", edgecolor="white")
@@ -156,5 +176,26 @@ def plot_link_length_distribution(
     ax.set_xlabel("Great-circle distance (km)")
     ax.set_ylabel("Number of links")
     ax.grid(True, axis="y", alpha=0.25)
+    _save_if_requested(fig, save_path)
+    return fig, ax
+
+
+def plot_link_length_distributions(
+    graphs: dict[str, nx.Graph],
+    save_path: str | Path | None = None,
+) -> tuple[plt.Figure, plt.Axes]:
+    """Overlay link-length distributions for several graphs."""
+
+    fig, ax = plt.subplots(figsize=(7, 4))
+    for label, graph in graphs.items():
+        lengths = compute_link_lengths_km(graph)
+        if lengths.size:
+            ax.hist(lengths, bins=40, alpha=0.45, label=label)
+
+    ax.set_title("Link length distributions")
+    ax.set_xlabel("Great-circle distance (km)")
+    ax.set_ylabel("Number of links")
+    ax.grid(True, axis="y", alpha=0.25)
+    ax.legend()
     _save_if_requested(fig, save_path)
     return fig, ax
