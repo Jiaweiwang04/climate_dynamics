@@ -1,0 +1,11 @@
+numpy
+pandas
+xarray
+netCDF4
+scipy
+scikit-learn
+networkx
+matplotlib
+tqdm
+pyarrow
+

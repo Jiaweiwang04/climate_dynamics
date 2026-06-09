@@ -216,3 +216,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project data products
+data/raw/*
+data/interim/*
+data/processed/*
+figures/*
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+!figures/.gitkeep
+
+# macOS
+.DS_Store
